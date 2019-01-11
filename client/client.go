@@ -14,20 +14,20 @@ import (
 type Client interface {
 	StartNotifier()
 	StartNotificationListener()
-	NotifyNetwork(message *protocol.Message)
+	NotifyNetwork(message *protocol.Notification)
 }
 
 type client struct {
 	Port                  string
 	logger                *logrus.Logger
-	notificationsReceived chan protocol.Message
-	notificationsToSend   chan protocol.Message
+	notificationsReceived chan protocol.Notification
+	notificationsToSend   chan protocol.Notification
 }
 
 // NewClient creates new client instance
 func NewClient(port string, logger *logrus.Logger) Client {
-	notificationsReceived := make(chan protocol.Message, 10)
-	notificationsToSend := make(chan protocol.Message, 10)
+	notificationsReceived := make(chan protocol.Notification, 10)
+	notificationsToSend := make(chan protocol.Notification, 10)
 	return &client{
 		port,
 		logger,
@@ -50,10 +50,10 @@ func (c *client) StartNotifier() {
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
 	for {
-		message := <-c.notificationsToSend
-		encoder.Encode(message)
+		notification := <-c.notificationsToSend
+		encoder.Encode(notification)
 		connection.Write(buffer.Bytes())
-		c.logger.Println("Notification sent: ", message)
+		c.logger.Println("Notification sent: ", notification)
 		buffer.Reset()
 	}
 
@@ -69,21 +69,21 @@ func (c *client) StartNotificationListener() {
 
 	c.logger.Println("Notifications listener started")
 
-	var message protocol.Message
+	var notification protocol.Notification
 	for {
 		inputBytes := make([]byte, 4096)
 		length, _, _ := connection.ReadFromUDP(inputBytes)
 
 		buffer := bytes.NewBuffer(inputBytes[:length])
 		decoder := gob.NewDecoder(buffer)
-		decoder.Decode(&message)
+		decoder.Decode(&notification)
 
-		c.logger.Println("Notification received: ", message)
+		c.logger.Println("Notification received: ", notification)
 
-		c.notificationsReceived <- message
+		c.notificationsReceived <- notification
 	}
 }
 
-func (c *client) NotifyNetwork(message *protocol.Message) {
+func (c *client) NotifyNetwork(message *protocol.Notification) {
 	c.notificationsToSend <- *message
 }
