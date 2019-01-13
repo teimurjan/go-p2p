@@ -1,8 +1,7 @@
 package client
 
 import (
-	"bytes"
-	"encoding/gob"
+	"encoding/json"
 	"net"
 	"os"
 
@@ -20,18 +19,18 @@ type Client interface {
 type client struct {
 	Port                  string
 	logger                *logrus.Logger
-	notificationsReceived chan protocol.Notification
+	ReceivedNotifications chan protocol.Notification
 	notificationsToSend   chan protocol.Notification
 }
 
 // NewClient creates new client instance
-func NewClient(port string, logger *logrus.Logger) Client {
-	notificationsReceived := make(chan protocol.Notification, 10)
+func NewClient(port string, logger *logrus.Logger) *client {
+	ReceivedNotifications := make(chan protocol.Notification, 10)
 	notificationsToSend := make(chan protocol.Notification, 10)
 	return &client{
 		port,
 		logger,
-		notificationsReceived,
+		ReceivedNotifications,
 		notificationsToSend,
 	}
 }
@@ -47,14 +46,17 @@ func (c *client) StartNotifier() {
 
 	c.logger.Println("Notifier started")
 
-	var buffer bytes.Buffer
-	encoder := gob.NewEncoder(&buffer)
 	for {
 		notification := <-c.notificationsToSend
-		encoder.Encode(notification)
-		connection.Write(buffer.Bytes())
+
+		encodedNotification, err := json.Marshal(notification)
+		if err != nil {
+			c.logger.Error(err)
+			os.Exit(1)
+		}
+		connection.Write(encodedNotification)
+
 		c.logger.Println("Notification sent: ", notification)
-		buffer.Reset()
 	}
 
 }
@@ -74,13 +76,15 @@ func (c *client) StartNotificationListener() {
 		inputBytes := make([]byte, 4096)
 		length, _, _ := connection.ReadFromUDP(inputBytes)
 
-		buffer := bytes.NewBuffer(inputBytes[:length])
-		decoder := gob.NewDecoder(buffer)
-		decoder.Decode(&notification)
+		err = json.Unmarshal(inputBytes[:length], &notification)
+		if err != nil {
+			c.logger.Error(err)
+			os.Exit(1)
+		}
 
 		c.logger.Println("Notification received: ", notification)
 
-		c.notificationsReceived <- notification
+		c.ReceivedNotifications <- notification
 	}
 }
 

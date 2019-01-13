@@ -19,5 +19,10 @@ func main() {
 
 	c := client.NewClient(config.Port, logger)
 	go c.StartNotifier()
-	c.StartNotificationListener()
+	go c.StartNotificationListener()
+
+	for {
+		<-c.ReceivedNotifications
+
+	}
 }
