@@ -37,6 +37,14 @@
   version = "v1.3.0"
 
 [[projects]]
+  digest = "1:d1816f8f4877e87cf0a80a25fbc0e7c7a6937bd728ccbf85e2c151c792445a1b"
+  name = "github.com/thoas/go-funk"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9132db0aefe2a09565f5124e267ac9a89845d8f6"
+  version = "0.4"
+
+[[projects]]
   branch = "master"
   digest = "1:38f553aff0273ad6f367cb0a0f8b6eecbaef8dc6cb8b50e57b6a81c1d5b1e332"
   name = "golang.org/x/crypto"
@@ -62,6 +70,7 @@
     "github.com/joho/godotenv/autoload",
     "github.com/kelseyhightower/envconfig",
     "github.com/sirupsen/logrus",
+    "github.com/thoas/go-funk",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

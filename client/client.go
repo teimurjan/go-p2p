@@ -1,101 +1,49 @@
 package client
 
 import (
-	"encoding/json"
+	"bytes"
 	"net"
-	"os"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/teimurjan/go-p2p/notify"
 	"github.com/teimurjan/go-p2p/protocol"
+	"github.com/teimurjan/go-p2p/udpAddrsArray"
 )
 
 // Client is a P2P client interface
 type Client interface {
-	StartNotifier()
-	StartNotificationListener()
-	NotifyNetwork(message *protocol.Notification)
-	GetReceivedNotifications() chan protocol.Notification
+	Start()
 }
 
 type client struct {
-	port                  string
-	logger                *logrus.Logger
-	receivedNotifications chan protocol.Notification
-	notificationsToSend   chan protocol.Notification
+	notificator notify.Notificator
+	logger      *logrus.Logger
 }
 
 // NewClient creates new client instance
-func NewClient(port string, logger *logrus.Logger) Client {
-	receivedNotifications := make(chan protocol.Notification, 10)
-	notificationsToSend := make(chan protocol.Notification, 10)
+func NewClient(notificator notify.Notificator, logger *logrus.Logger) Client {
 	return &client{
-		port,
+		notificator,
 		logger,
-		receivedNotifications,
-		notificationsToSend,
 	}
 }
 
-func (c *client) StartNotifier() {
-	destinationAddress, _ := net.ResolveUDPAddr("udp", "255.255.255.255:"+c.port)
-	connection, err := net.DialUDP("udp", nil, destinationAddress)
-	if err != nil {
-		c.logger.Error(err)
-		os.Exit(1)
-	}
-	defer connection.Close()
+func (c *client) Start() {
+	go c.notificator.StartNotifier()
+	go c.notificator.StartNotificationListener()
 
-	c.logger.Println("Notifier started")
-
+	peers := udpAddrsArray.NewUDPAddrsArray()
 	for {
-		notification := <-c.notificationsToSend
-
-		encodedNotification, err := json.Marshal(notification)
-		if err != nil {
-			c.logger.Error(err)
-			continue
+		notification := <-c.notificator.GetReceivedNotifications()
+		if notification.ID == protocol.ConnectedID {
+			c.logger.Println("A new client is connected " + string(notification.FromAddr.IP))
+			peers = peers.Add(notification.FromAddr)
+		} else if notification.ID == protocol.DisconnectedID {
+			c.logger.Println("The client is disconnected " + string(notification.FromAddr.IP))
+			peers = peers.Filter(func(addr *net.UDPAddr) bool {
+				return bytes.Compare(addr.IP, notification.FromAddr.IP) != 0
+			})
 		}
-
-		connection.Write(encodedNotification)
-
-		c.logger.Println("Notification sent: ", notification)
 	}
-
-}
-
-func (c *client) StartNotificationListener() {
-	localAddress, _ := net.ResolveUDPAddr("udp", ":"+c.port)
-	connection, err := net.ListenUDP("udp", localAddress)
-	if err != nil {
-		c.logger.Error(err)
-		os.Exit(1)
-	}
-	defer connection.Close()
-
-	c.logger.Println("Notifications listener started")
-
-	var notification protocol.Notification
-	for {
-		inputBytes := make([]byte, 4096)
-		length, adr, _ := connection.ReadFromUDP(inputBytes)
-
-		err = json.Unmarshal(inputBytes[:length], &notification)
-		if err != nil {
-			c.logger.Error(err)
-			continue
-		}
-		notification.FromAddr = adr
-
-		c.logger.Println("Notification received: ", notification)
-
-		c.receivedNotifications <- notification
-	}
-}
-
-func (c *client) NotifyNetwork(message *protocol.Notification) {
-	c.notificationsToSend <- *message
-}
-
-func (c *client) GetReceivedNotifications() chan protocol.Notification {
-	return c.receivedNotifications
 }
