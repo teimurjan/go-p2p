@@ -1,9 +1,6 @@
 package client
 
 import (
-	"bytes"
-	"net"
-
 	"github.com/sirupsen/logrus"
 
 	"github.com/teimurjan/go-p2p/notify"
@@ -35,7 +32,10 @@ func NewClient(notificator notify.Notificator, logger *logrus.Logger) Client {
 func (c *client) Start() {
 	go c.notificator.StartNotifier()
 	go c.notificator.StartNotificationListener()
+	c.handleNotifications()
+}
 
+func (c *client) handleNotifications() {
 	for {
 		notification := <-c.notificator.GetReceivedNotifications()
 		if notification.ID == protocol.ConnectedID {
@@ -43,9 +43,7 @@ func (c *client) Start() {
 			c.peers = c.peers.Add(notification.FromAddr)
 		} else if notification.ID == protocol.DisconnectedID {
 			c.logger.Println("The client is disconnected " + string(notification.FromAddr.IP))
-			c.peers = c.peers.Filter(func(addr *net.UDPAddr) bool {
-				return bytes.Compare(addr.IP, notification.FromAddr.IP) != 0
-			})
+			c.peers = c.peers.Remove(notification.FromAddr)
 		}
 	}
 }
