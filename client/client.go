@@ -1,6 +1,9 @@
 package client
 
 import (
+	"net"
+	"time"
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/teimurjan/go-p2p/notify"
@@ -11,6 +14,7 @@ import (
 // Client is a P2P client interface
 type Client interface {
 	Start()
+	DownloadFile(path string)
 }
 
 type client struct {
@@ -45,5 +49,18 @@ func (c *client) handleNotifications() {
 			c.logger.Println("The client is disconnected " + string(notification.FromAddr.IP))
 			c.peers = c.peers.Remove(notification.FromAddr)
 		}
+	}
+}
+
+func (c *client) DownloadFile(path string) {
+	for _, peer := range c.peers {
+		tcpAddr := peer.String() + ":" + string(peer.Port)
+		_, err := net.DialTimeout("tcp", tcpAddr, time.Second*2)
+		if err != nil {
+			c.logger.Printf("Connection with %s cannot be established. Removing from the peers list.", tcpAddr)
+			c.peers.Remove(peer)
+			return
+		}
+		c.logger.Printf("Connection with %s established.", tcpAddr)
 	}
 }
