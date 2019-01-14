@@ -7,6 +7,7 @@ import (
 	"github.com/teimurjan/go-p2p/client"
 	"github.com/teimurjan/go-p2p/config"
 	"github.com/teimurjan/go-p2p/logging"
+	"github.com/teimurjan/go-p2p/protocol"
 )
 
 func main() {
@@ -22,7 +23,9 @@ func main() {
 	go c.StartNotificationListener()
 
 	for {
-		<-c.ReceivedNotifications
-
+		notification := <-c.GetReceivedNotifications()
+		if notification.ID == protocol.ConnectedID {
+			logger.Println("A new client is connected")
+		}
 	}
 }

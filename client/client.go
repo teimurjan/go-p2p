@@ -14,29 +14,30 @@ type Client interface {
 	StartNotifier()
 	StartNotificationListener()
 	NotifyNetwork(message *protocol.Notification)
+	GetReceivedNotifications() chan protocol.Notification
 }
 
 type client struct {
-	Port                  string
+	port                  string
 	logger                *logrus.Logger
-	ReceivedNotifications chan protocol.Notification
+	receivedNotifications chan protocol.Notification
 	notificationsToSend   chan protocol.Notification
 }
 
 // NewClient creates new client instance
-func NewClient(port string, logger *logrus.Logger) *client {
-	ReceivedNotifications := make(chan protocol.Notification, 10)
+func NewClient(port string, logger *logrus.Logger) Client {
+	receivedNotifications := make(chan protocol.Notification, 10)
 	notificationsToSend := make(chan protocol.Notification, 10)
 	return &client{
 		port,
 		logger,
-		ReceivedNotifications,
+		receivedNotifications,
 		notificationsToSend,
 	}
 }
 
 func (c *client) StartNotifier() {
-	destinationAddress, _ := net.ResolveUDPAddr("udp", "255.255.255.255:"+c.Port)
+	destinationAddress, _ := net.ResolveUDPAddr("udp", "255.255.255.255:"+c.port)
 	connection, err := net.DialUDP("udp", nil, destinationAddress)
 	if err != nil {
 		c.logger.Error(err)
@@ -52,8 +53,9 @@ func (c *client) StartNotifier() {
 		encodedNotification, err := json.Marshal(notification)
 		if err != nil {
 			c.logger.Error(err)
-			os.Exit(1)
+			continue
 		}
+
 		connection.Write(encodedNotification)
 
 		c.logger.Println("Notification sent: ", notification)
@@ -62,10 +64,11 @@ func (c *client) StartNotifier() {
 }
 
 func (c *client) StartNotificationListener() {
-	localAddress, _ := net.ResolveUDPAddr("udp", ":"+c.Port)
+	localAddress, _ := net.ResolveUDPAddr("udp", ":"+c.port)
 	connection, err := net.ListenUDP("udp", localAddress)
 	if err != nil {
 		c.logger.Error(err)
+		os.Exit(1)
 	}
 	defer connection.Close()
 
@@ -74,20 +77,25 @@ func (c *client) StartNotificationListener() {
 	var notification protocol.Notification
 	for {
 		inputBytes := make([]byte, 4096)
-		length, _, _ := connection.ReadFromUDP(inputBytes)
+		length, adr, _ := connection.ReadFromUDP(inputBytes)
 
 		err = json.Unmarshal(inputBytes[:length], &notification)
 		if err != nil {
 			c.logger.Error(err)
-			os.Exit(1)
+			continue
 		}
+		notification.FromAddr = adr
 
 		c.logger.Println("Notification received: ", notification)
 
-		c.ReceivedNotifications <- notification
+		c.receivedNotifications <- notification
 	}
 }
 
 func (c *client) NotifyNetwork(message *protocol.Notification) {
 	c.notificationsToSend <- *message
+}
+
+func (c *client) GetReceivedNotifications() chan protocol.Notification {
+	return c.receivedNotifications
 }
