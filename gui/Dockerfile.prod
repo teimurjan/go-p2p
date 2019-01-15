@@ -1,0 +1,11 @@
+FROM node:alpine as builder
+COPY . /usr/src/go-p2p-gui
+WORKDIR /usr/src/go-p2p-gui
+RUN npm install
+RUN npm run build
+
+FROM nginx:1.13.9-alpine
+RUN rm -rf /etc/nginx/conf.d
+COPY --from=builder /usr/src/go-p2p-gui/conf /etc/nginx
+COPY --from=builder /usr/src/go-p2p-gui/build /usr/share/nginx/html
+CMD ["nginx", "-g", "daemon off;"]

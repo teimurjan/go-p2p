@@ -10,15 +10,25 @@ The app is dockerized so it can be started using [Docker](https://docs.docker.co
 
 If you have the tools installed on your machine, create `.env` file by example file `.env.example` and type:
 
+### Development
+
 ```sh
-docker-compose up -d
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+### Production
+
+```sh
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
 ## Locally
 
-If you need to run the app without docker, you will need [Go](https://golang.org/doc/install) and [Dep](https://golang.github.io/dep/).
+If you need to run the app without docker, you will need [Go](https://golang.org/doc/install), [Dep](https://golang.github.io/dep/) and [Node](https://nodejs.org/en/download/).
 
-After the tools installation, type:
+After the tools installation:
+
+### Backend setup
 
 ```sh
 dep ensure
@@ -26,8 +36,16 @@ dep ensure
 
 to install all Go dependencies.
 
-Now you need to do the same step with the `.env` file like in [Docker](##Docker) section and run it:
+Create `.env` file like in [Docker](##Docker) section and run it:
 
 ```sh
 go run main.go
+```
+
+### GUI setup
+
+```sh
+cd gui
+npm i
+npm run start
 ```

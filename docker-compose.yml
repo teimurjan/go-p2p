@@ -1,9 +1,0 @@
-version: "3"
-services:
-  backend:
-    build: .
-    env_file:
-      - .env
-    restart: always
-    ports:
-      - "${PORT}:${PORT}/udp"

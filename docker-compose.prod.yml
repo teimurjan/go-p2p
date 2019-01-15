@@ -1,0 +1,17 @@
+version: "3.7"
+services:
+  backend:
+    container_name: go-p2p-backend-prod
+    build: .
+    env_file:
+      - .env
+    restart: always
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}/udp"
+  gui:
+    container_name: go-p2p-gui-prod
+    build:
+      context: gui
+      dockerfile: Dockerfile.prod
+    ports:
+      - "${GUI_PORT}:${GUI_PORT}"

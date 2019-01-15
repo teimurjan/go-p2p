@@ -5,7 +5,7 @@ import "github.com/kelseyhightower/envconfig"
 // Config is a config variables for the app
 type Config struct {
 	LogFile string `envconfig:"LOG_FILE"`
-	Port    string `envconfig:"PORT"`
+	Port    string `envconfig:"BACKEND_PORT"`
 }
 
 // NewConfig creates new Config instance
