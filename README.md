@@ -42,6 +42,11 @@ Create `.env` file like in [Docker](##Docker) section and run it:
 go run main.go
 ```
 
+### Testing broadcast
+
+* Using netcat: ```./broadcast_udp.netcat.sh -m "{\"ID\":1}" -p 3333```
+* Using socat: ```./broadcast_udp.socat.sh -m "{\"ID\":1}" -p 3333```
+
 ### GUI setup
 
 ```sh
