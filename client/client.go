@@ -9,7 +9,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/teimurjan/go-p2p/udpAddrsArray"
+	"github.com/teimurjan/go-p2p/utilTypes"
 )
 
 // Client is a P2P client interface
@@ -19,14 +19,14 @@ type Client interface {
 }
 
 type client struct {
-	peers   udpAddrsArray.UDPAddrsArray
+	peers   utilTypes.UDPAddrsArray
 	storage imstorage.Storage
 	logger  *logrus.Logger
 }
 
 // NewClient creates new client instance
 func NewClient(storage imstorage.Storage, logger *logrus.Logger) Client {
-	peers := udpAddrsArray.NewUDPAddrsArray()
+	peers := utilTypes.NewUDPAddrsArray()
 	return &client{
 		peers,
 		storage,

@@ -1,4 +1,4 @@
-package udpAddrsArray
+package utilTypes
 
 import (
 	"bytes"
