@@ -1,17 +1,29 @@
 version: "3.7"
 services:
+  redis:
+    restart: always
+    image: redis
+    volumes:
+      - ./redis-data:/data
+    ports:
+      - 6379
   backend:
-    container_name: go-p2p-backend-prod
+    restart: always
     build: .
+    depends_on:
+      - redis
     env_file:
       - .env
-    restart: always
+    environment:    
+      - REDIS_URL=redis:6379
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}/udp"
   gui:
-    container_name: go-p2p-gui-prod
+    restart: always
     build:
       context: gui
       dockerfile: Dockerfile.prod
+    depends_on:
+      - backend
     ports:
       - "${GUI_PORT}:${GUI_PORT}"

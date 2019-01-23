@@ -5,6 +5,8 @@ import (
 
 	"github.com/teimurjan/go-p2p/notify"
 
+	"github.com/teimurjan/go-p2p/imstorage"
+
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/teimurjan/go-p2p/client"
 	"github.com/teimurjan/go-p2p/config"
@@ -19,8 +21,11 @@ func main() {
 
 	logger := logging.NewLogger(config)
 
-	notificator := notify.NewNotificator(config.Port, logger)
+	storage := imstorage.NewRedisStorage(config.RedisUrl)
 
-	c := client.NewClient(notificator, logger)
+	n := notify.NewNotifier(config.Port, storage, logger)
+	go n.Start()
+
+	c := client.NewClient(storage, logger)
 	c.Start()
 }

@@ -2,6 +2,17 @@
 
 
 [[projects]]
+  digest = "1:38ec74012390146c45af1f92d46e5382b50531247929ff3a685d2b2be65155ac"
+  name = "github.com/gomodule/redigo"
+  packages = [
+    "internal",
+    "redis",
+  ]
+  pruneopts = "UT"
+  revision = "9c11da706d9b7902c6da69c592f75637793fe121"
+  version = "v2.0.0"
+
+[[projects]]
   digest = "1:1f4b55d7c57681ad91b7ce3ac7c8e7b139e6dd2f477c5f87e6a7749d298645dc"
   name = "github.com/joho/godotenv"
   packages = [
@@ -37,14 +48,6 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:d1816f8f4877e87cf0a80a25fbc0e7c7a6937bd728ccbf85e2c151c792445a1b"
-  name = "github.com/thoas/go-funk"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9132db0aefe2a09565f5124e267ac9a89845d8f6"
-  version = "0.4"
-
-[[projects]]
   branch = "master"
   digest = "1:38f553aff0273ad6f367cb0a0f8b6eecbaef8dc6cb8b50e57b6a81c1d5b1e332"
   name = "golang.org/x/crypto"
@@ -67,10 +70,10 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/gomodule/redigo/redis",
     "github.com/joho/godotenv/autoload",
     "github.com/kelseyhightower/envconfig",
     "github.com/sirupsen/logrus",
-    "github.com/thoas/go-funk",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

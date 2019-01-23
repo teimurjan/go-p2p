@@ -1,15 +1,21 @@
 package protocol
 
-import "net"
+// NewPeerCode is a code for notification about a new client connected
+const NewPeerCode = 1
 
-// ConnectedID is an ID for notification about new client connection
-const ConnectedID = 1
+// ExitPeerCode is a code for notification about a client exited
+const ExitPeerCode = 2
 
-// DisconnectedID is an ID for notification about the client disconnection
-const DisconnectedID = 2
+// Request is a protocol request model
+type Request struct {
+	Code     int64
+	Data     string
+	MetaData string
+}
 
-// Notification is a notification model
-type Notification struct {
-	ID       int64
-	FromAddr *net.UDPAddr
+// Response is a protocol response model
+type Response struct {
+	Code     int64
+	Data     string
+	MetaData string
 }

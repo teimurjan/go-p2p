@@ -4,10 +4,11 @@ import (
 	"net"
 	"time"
 
+	"github.com/teimurjan/go-p2p/imstorage"
+	"github.com/teimurjan/go-p2p/protocol"
+
 	"github.com/sirupsen/logrus"
 
-	"github.com/teimurjan/go-p2p/notify"
-	"github.com/teimurjan/go-p2p/protocol"
 	"github.com/teimurjan/go-p2p/udpAddrsArray"
 )
 
@@ -18,36 +19,36 @@ type Client interface {
 }
 
 type client struct {
-	peers       udpAddrsArray.UDPAddrsArray
-	notificator notify.Notificator
-	logger      *logrus.Logger
+	peers   udpAddrsArray.UDPAddrsArray
+	storage imstorage.Storage
+	logger  *logrus.Logger
 }
 
 // NewClient creates new client instance
-func NewClient(notificator notify.Notificator, logger *logrus.Logger) Client {
+func NewClient(storage imstorage.Storage, logger *logrus.Logger) Client {
 	peers := udpAddrsArray.NewUDPAddrsArray()
 	return &client{
 		peers,
-		notificator,
+		storage,
 		logger,
 	}
 }
 
 func (c *client) Start() {
-	go c.notificator.StartNotifier()
-	go c.notificator.StartNotificationListener()
+	c.logger.Println("Client has started.")
+	go c.storage.SubscribeToNotificationsToHandle()
 	c.handleNotifications()
 }
 
 func (c *client) handleNotifications() {
 	for {
-		notification := <-c.notificator.GetReceivedNotifications()
-		if notification.ID == protocol.ConnectedID {
+		notification := <-c.storage.GetNotificationsToHandle()
+		if notification.Res.Code == protocol.NewPeerCode {
 			c.logger.Println("A new client is connected " + string(notification.FromAddr.IP))
-			c.peers = c.peers.Add(notification.FromAddr)
-		} else if notification.ID == protocol.DisconnectedID {
+			c.peers.Add(notification.FromAddr)
+		} else if notification.Res.Code == protocol.ExitPeerCode {
 			c.logger.Println("The client is disconnected " + string(notification.FromAddr.IP))
-			c.peers = c.peers.Remove(notification.FromAddr)
+			c.peers.Remove(notification.FromAddr)
 		}
 	}
 }

@@ -6,96 +6,96 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/teimurjan/go-p2p/imstorage"
+	"github.com/teimurjan/go-p2p/models"
 	"github.com/teimurjan/go-p2p/protocol"
 )
 
-// Notificator is a P2P client interface
-type Notificator interface {
-	StartNotifier()
-	StartNotificationListener()
-	NotifyNetwork(message *protocol.Notification)
-	GetReceivedNotifications() chan protocol.Notification
+// Notifier is base notifier interface
+type Notifier interface {
+	Start()
 }
 
-type client struct {
-	port                  string
-	logger                *logrus.Logger
-	receivedNotifications chan protocol.Notification
-	notificationsToSend   chan protocol.Notification
+type notifier struct {
+	port    string
+	storage imstorage.Storage
+	logger  *logrus.Logger
 }
 
-// NewNotificator creates new client instance
-func NewNotificator(port string, logger *logrus.Logger) Notificator {
-	receivedNotifications := make(chan protocol.Notification, 10)
-	notificationsToSend := make(chan protocol.Notification, 10)
-	return &client{
+// NewNotifier creates new notifier instance
+func NewNotifier(port string, storage imstorage.Storage, logger *logrus.Logger) Notifier {
+	return &notifier{
 		port,
+		storage,
 		logger,
-		receivedNotifications,
-		notificationsToSend,
 	}
 }
 
-func (c *client) StartNotifier() {
-	destinationAddress, _ := net.ResolveUDPAddr("udp", "255.255.255.255:"+c.port)
+func (n *notifier) Start() {
+	go n.startNotifier()
+	n.startNotificationListener()
+}
+
+func (n *notifier) startNotifier() {
+	destinationAddress, _ := net.ResolveUDPAddr("udp", "255.255.255.255:"+n.port)
 	connection, err := net.DialUDP("udp", nil, destinationAddress)
 	if err != nil {
-		c.logger.Error(err)
+		n.logger.Error(err)
 		os.Exit(1)
 	}
 	defer connection.Close()
 
-	c.logger.Println("Notifier started")
+	go n.storage.SubscribeToNotificationsToSend()
+
+	n.logger.Println("Notifier has started.")
 
 	for {
-		notification := <-c.notificationsToSend
+		notification := <-n.storage.GetNotificationsToSend()
 
 		encodedNotification, err := json.Marshal(notification)
 		if err != nil {
-			c.logger.Error(err)
+			n.logger.Error(err)
 			continue
 		}
 
-		connection.Write(encodedNotification)
-
-		c.logger.Println("Notification sent: ", notification)
+		_, err = connection.Write(encodedNotification)
+		if err != nil {
+			n.logger.Error(err)
+		}
 	}
 
 }
 
-func (c *client) StartNotificationListener() {
-	localAddress, _ := net.ResolveUDPAddr("udp", ":"+c.port)
+func (n *notifier) startNotificationListener() {
+	localAddress, _ := net.ResolveUDPAddr("udp", ":"+n.port)
 	connection, err := net.ListenUDP("udp", localAddress)
 	if err != nil {
-		c.logger.Error(err)
+		n.logger.Error(err)
 		os.Exit(1)
 	}
 	defer connection.Close()
 
-	c.logger.Println("Notifications listener started")
+	n.logger.Println("Notification listener has started.")
 
-	var notification protocol.Notification
+	var notification models.Notification
+	var response protocol.Response
 	for {
 		inputBytes := make([]byte, 4096)
-		length, adr, _ := connection.ReadFromUDP(inputBytes)
+		length, addr, _ := connection.ReadFromUDP(inputBytes)
 
-		err = json.Unmarshal(inputBytes[:length], &notification)
+		err = json.Unmarshal(inputBytes[:length], &response)
 		if err != nil {
-			c.logger.Error(err)
+			n.logger.Error(err)
 			continue
 		}
-		notification.FromAddr = adr
 
-		c.logger.Println("Notification received: ", notification)
+		notification.Res = &response
+		notification.FromAddr = addr
 
-		c.receivedNotifications <- notification
+		err = n.storage.AddNotificationToHandle(&notification)
+		if err != nil {
+			n.logger.Error(err)
+		}
 	}
-}
-
-func (c *client) NotifyNetwork(message *protocol.Notification) {
-	c.notificationsToSend <- *message
-}
-
-func (c *client) GetReceivedNotifications() chan protocol.Notification {
-	return c.receivedNotifications
 }
