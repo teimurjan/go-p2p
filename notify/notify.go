@@ -79,18 +79,18 @@ func (n *notifier) startNotificationListener() {
 	n.logger.Println("Notification listener has started.")
 
 	var notification models.Notification
-	var response protocol.Response
+	var request protocol.Request
 	for {
 		inputBytes := make([]byte, 4096)
 		length, addr, _ := connection.ReadFromUDP(inputBytes)
 
-		err = json.Unmarshal(inputBytes[:length], &response)
+		err = json.Unmarshal(inputBytes[:length], &request)
 		if err != nil {
 			n.logger.Error(err)
 			continue
 		}
 
-		notification.Res = &response
+		notification.Req = &request
 		notification.FromAddr = addr
 
 		err = n.storage.AddNotificationToHandle(&notification)
