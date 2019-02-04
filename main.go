@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/teimurjan/go-p2p/notify"
+	"github.com/teimurjan/go-p2p/server"
 
 	"github.com/teimurjan/go-p2p/imstorage"
 
@@ -27,5 +28,8 @@ func main() {
 	go n.Start()
 
 	c := client.NewClient(storage, logger)
-	c.Start()
+	go c.Start()
+
+	s := server.NewServer(config.Port, logger)
+	s.Start()
 }

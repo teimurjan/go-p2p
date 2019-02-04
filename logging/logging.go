@@ -28,5 +28,5 @@ func getLoggerFile(fileName string) (*os.File, error) {
 		return nil, err
 	}
 	filePath := rootDir + "/" + fileName
-	return os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
+	return os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0755)
 }
