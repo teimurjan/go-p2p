@@ -46,8 +46,6 @@ func (n *notifier) startNotifier() {
 	}
 	defer connection.Close()
 
-	go n.storage.SubscribeToNotificationsToSend()
-
 	n.logger.Println("Notifier has started.")
 
 	for {

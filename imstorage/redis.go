@@ -73,12 +73,14 @@ func (s *redisStorage) AddNotificationToHandle(notification *models.Notification
 	return err
 }
 
-func (s *redisStorage) SubscribeToNotificationsToHandle() error {
+func (s *redisStorage) SubscribeToNotificationsToHandle(cb subscribeCallback) error {
 	conn := s.pool.Get()
 	defer conn.Close()
 
 	psc := redis.PubSubConn{Conn: conn}
 	psc.PSubscribe(NotificationToHandleKey)
+
+	cb()
 
 	for {
 		switch v := psc.Receive().(type) {
@@ -94,12 +96,15 @@ func (s *redisStorage) SubscribeToNotificationsToHandle() error {
 	}
 }
 
-func (s *redisStorage) SubscribeToNotificationsToSend() error {
+func (s *redisStorage) SubscribeToNotificationsToSend(cb subscribeCallback) error {
 	conn := s.pool.Get()
 	defer conn.Close()
 
 	psc := redis.PubSubConn{Conn: conn}
 	psc.PSubscribe(NotificationToSendKey)
+
+	cb()
+
 	for {
 		switch v := psc.Receive().(type) {
 		case redis.Message:

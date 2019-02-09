@@ -37,7 +37,7 @@ func NewClient(storage imstorage.Storage, logger *logrus.Logger) Client {
 
 func (c *client) Start() {
 	c.logger.Println("Client has started.")
-	go c.storage.SubscribeToNotificationsToHandle()
+
 	go c.handleNotifications()
 }
 
