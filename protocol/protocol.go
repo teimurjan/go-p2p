@@ -1,5 +1,8 @@
 package protocol
 
+/*
+	This group of constants defines actions codes
+*/
 const (
 	// NewPeerCode is a code for notification about a new client connected
 	NewPeerCode = 1
@@ -11,7 +14,12 @@ const (
 	GetChunkCode = 4
 )
 
+/*
+	This group of codes defines status of responses from server
+*/
 const (
+	// Any server-side error
+	ServerSideError = -1
 	// FileNotExistStatus is a status when requested file does not exist
 	FileNotExistStatus = 0
 	// FileExistStatus is a status when requested file exists

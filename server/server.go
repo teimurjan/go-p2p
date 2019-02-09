@@ -74,5 +74,6 @@ func (s *server) acceptConnections(l net.Listener) {
 }
 
 func (s *server) handleRequest(request *protocol.Request) *protocol.Response {
-	return &protocol.Response{}
+	response := process(request)
+	return &response
 }
