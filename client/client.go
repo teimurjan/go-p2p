@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"net"
 	"time"
 
@@ -37,7 +38,7 @@ func NewClient(storage imstorage.Storage, logger *logrus.Logger) Client {
 func (c *client) Start() {
 	c.logger.Println("Client has started.")
 	go c.storage.SubscribeToNotificationsToHandle()
-	c.handleNotifications()
+	go c.handleNotifications()
 }
 
 func (c *client) handleNotifications() {
@@ -56,12 +57,23 @@ func (c *client) handleNotifications() {
 func (c *client) DownloadFile(path string) {
 	for _, peer := range c.peers {
 		tcpAddr := peer.String() + ":" + string(peer.Port)
-		_, err := net.DialTimeout("tcp", tcpAddr, time.Second*2)
+		conn, err := net.DialTimeout("tcp", tcpAddr, time.Second*2)
 		if err != nil {
 			c.logger.Printf("Connection with %s cannot be established. Removing from the peers list.", tcpAddr)
 			c.peers.Remove(peer)
 			return
 		}
 		c.logger.Printf("Connection with %s established.", tcpAddr)
+
+		request := &protocol.Request{Code: protocol.CheckFileCode}
+		json, err := json.Marshal(request)
+		if err != nil {
+			c.logger.Error(err)
+			conn.Close()
+			return
+		}
+		conn.Write(json)
+
+		conn.Close()
 	}
 }

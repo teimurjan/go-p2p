@@ -3,7 +3,9 @@ package main
 import (
 	"log"
 
+	"github.com/teimurjan/go-p2p/models"
 	"github.com/teimurjan/go-p2p/notify"
+	"github.com/teimurjan/go-p2p/protocol"
 	"github.com/teimurjan/go-p2p/server"
 
 	"github.com/teimurjan/go-p2p/imstorage"
@@ -25,10 +27,14 @@ func main() {
 	storage := imstorage.NewRedisStorage(config.RedisUrl)
 
 	n := notify.NewNotifier(config.Port, storage, logger)
-	go n.Start()
+	n.Start()
 
 	c := client.NewClient(storage, logger)
-	go c.Start()
+	c.Start()
+
+	storage.AddNotificationToSend(
+		&models.Notification{Req: &protocol.Request{Code: protocol.NewPeerCode}},
+	)
 
 	s := server.NewServer(config.Port, logger)
 	s.Start()

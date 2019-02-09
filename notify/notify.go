@@ -34,7 +34,7 @@ func NewNotifier(port string, storage imstorage.Storage, logger *logrus.Logger) 
 
 func (n *notifier) Start() {
 	go n.startNotifier()
-	n.startNotificationListener()
+	go n.startNotificationListener()
 }
 
 func (n *notifier) startNotifier() {
