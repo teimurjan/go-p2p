@@ -34,6 +34,7 @@ const (
 type RequestInfo struct {
 	FileName   string
 	ChunkIndex int64
+	ChunkSize  int64
 }
 
 // Request is a protocol request model
@@ -45,15 +46,15 @@ type Request struct {
 
 // ResponseInfo is meta data of a response
 type ResponseInfo struct {
-	FileName                string
-	FileHash                string
-	ChunkSize               int64
-	ChunkBytesStartPosition int64
+	FileName   string
+	FileHash   string
+	ChunkSize  int64
+	ChunkIndex int64
 }
 
 // Response is a protocol response model
 type Response struct {
 	Status int64
-	Data   string
+	Data   []byte
 	Info   ResponseInfo
 }
