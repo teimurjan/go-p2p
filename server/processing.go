@@ -29,6 +29,7 @@ func checkFile(requestInfo *protocol.RequestInfo) protocol.Response {
 			response.Status = protocol.FileExistStatus
 			responseInfo.FileName = requestInfo.FileName
 			responseInfo.FileHash = foundFileHash
+			responseInfo.FileSize = fileutils.GetFileSize(filePath)
 			response.Info = responseInfo
 		}
 	}
@@ -44,13 +45,15 @@ func retrieveChunk(request *protocol.Request) protocol.Response {
 		if error != nil {
 			response.Status = protocol.ChunkNotSentStatus
 			log.Printf("Error was occured while retrieving file chunk %v", error)
-
 		} else {
+			responseInfo := protocol.ResponseInfo{}
+			responseInfo.FileName = request.Info.FileName
+			responseInfo.ChunkSize = request.Info.ChunkSize
+			responseInfo.ChunkIndex = request.Info.ChunkIndex
 			response.Status = protocol.ChunkSentStatus
 			response.Data = bytes
+			response.Info = responseInfo
 		}
-		response.Info.ChunkSize = request.Info.ChunkSize
-		response.Info.ChunkIndex = request.Info.ChunkIndex
 	}
 	return response
 }
