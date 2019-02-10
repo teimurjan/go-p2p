@@ -48,6 +48,7 @@ type Request struct {
 type ResponseInfo struct {
 	FileName   string
 	FileHash   string
+	FileSize   int64
 	ChunkSize  int64
 	ChunkIndex int64
 }
