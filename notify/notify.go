@@ -51,13 +51,13 @@ func (n *notifier) startNotifier() {
 	for {
 		notification := <-n.storage.GetNotificationsToSend()
 
-		encodedNotification, err := json.Marshal(notification)
+		encodedRequest, err := json.Marshal(notification.Req)
 		if err != nil {
 			n.logger.Error(err)
 			continue
 		}
 
-		_, err = connection.Write(encodedNotification)
+		_, err = connection.Write(encodedRequest)
 		if err != nil {
 			n.logger.Error(err)
 		}
