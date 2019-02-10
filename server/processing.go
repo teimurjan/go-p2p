@@ -48,7 +48,7 @@ func retrieveChunk(request *protocol.Request) protocol.Response {
 		} else {
 			responseInfo := protocol.ResponseInfo{}
 			responseInfo.FileName = request.Info.FileName
-			responseInfo.ChunkSize = request.Info.ChunkSize
+			responseInfo.ChunkSize = int64(len(bytes))
 			responseInfo.ChunkIndex = request.Info.ChunkIndex
 			response.Status = protocol.ChunkSentStatus
 			response.Data = bytes

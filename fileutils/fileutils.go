@@ -45,11 +45,17 @@ func GetFileChunk(path string, chunkIndex int64, chunkSize int64) ([]byte, error
 
 	fileSize := GetFileSize(path)
 
+	chunkBytesStartPosition := chunkSize * chunkIndex
+
+	if chunkBytesStartPosition >= fileSize {
+		return nil, nil
+	}
+	if chunkBytesStartPosition+chunkSize > fileSize {
+		chunkSize = fileSize - chunkBytesStartPosition
+	}
 	chunkBuffer := make([]byte, chunkSize)
-
-	chunkBytesStartPosition := fileSize / (fileSize / chunkSize) * chunkIndex
-
 	_, err = f.ReadAt(chunkBuffer, chunkBytesStartPosition)
+
 	if err != nil {
 		return nil, err
 	}
