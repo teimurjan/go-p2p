@@ -1,0 +1,38 @@
+@import "../../style/base.scss";
+
+.Input {
+  position: relative;
+  border-radius: 2px;
+  padding: 1rem;
+  background: $input-background;
+  &:after {
+    @include dynamic-background;
+    content: "";
+    position: absolute;
+    left: 0px;
+    right: 0px;
+    bottom: 0px;
+    z-index: 999;
+    height: 2px;
+    border-bottom-left-radius: 2px;
+    border-bottom-right-radius: 2px;
+  }
+
+  &__input {
+    width: 100%;
+    border: none;
+    flex-grow: 1;
+    background: transparent;
+    color: $input-text-active;
+    font-size: 1.5rem;
+    line-height: 2.4rem;
+    vertical-align: middle;
+    &::-webkit-input-placeholder {
+      color: $input-text-inactive;
+    }
+
+    &:focus {
+      outline: none;
+    }
+  }
+}

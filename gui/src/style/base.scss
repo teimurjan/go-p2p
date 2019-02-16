@@ -1,0 +1,33 @@
+$input-background: rgba(57, 63, 84, 0.8);
+$input-text-inactive: #7881a1;
+$input-text-active: #bfd2ff;
+
+@keyframes gradient {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 100% 0;
+  }
+}
+
+@mixin dynamic-background {
+  background: linear-gradient(
+    to right,
+    #b294ff,
+    #57e6e6,
+    #feffb8,
+    #57e6e6,
+    #b294ff,
+    #57e6e6
+  );
+  background-position: 0% 0%;
+  background-size: 500% auto;
+  animation: gradient 3s linear infinite;
+}
+
+@mixin media-phone {
+  @media only screen and (max-width: 768px) {
+    @content;
+  }
+}

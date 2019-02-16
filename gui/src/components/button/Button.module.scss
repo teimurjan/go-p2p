@@ -1,0 +1,15 @@
+@import "../../style/base.scss";
+
+.Button {
+  border: none;
+  text-transform: uppercase;
+  color: #6515dd;
+  font-size: 1.5rem;
+  background: linear-gradient(to right, #b294ff, #57e6e6);
+  font-weight: bold;
+  padding: 1rem 2rem;
+
+  &:hover {
+    @include dynamic-background;
+  }
+}
