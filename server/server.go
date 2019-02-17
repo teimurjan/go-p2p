@@ -7,6 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/teimurjan/go-p2p/protocol"
+	"github.com/teimurjan/go-p2p/utils"
 )
 
 // Server is a P2P server interface
@@ -50,21 +51,13 @@ func (s *server) acceptConnections(l net.Listener) {
 	}
 	defer conn.Close()
 
-	inputBytes := make([]byte, 4096)
-	length, err := conn.Read(inputBytes)
+	request, err := utils.ReadRequestFromTCP(conn)
 	if err != nil {
-		s.logger.Errorf("Cannot read from connection. %s", err)
+		s.logger.Error(err)
 		return
 	}
 
-	var request protocol.Request
-	err = json.Unmarshal(inputBytes[:length], &request)
-	if err != nil {
-		s.logger.Error(err.Error())
-		return
-	}
-
-	response := s.handleRequest(&request)
+	response := s.handleRequest(request)
 	json, err := json.Marshal(response)
 	if err != nil {
 		s.logger.Error(err)

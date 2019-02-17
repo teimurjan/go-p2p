@@ -1,9 +1,7 @@
 package client
 
 import (
-	"encoding/json"
-	"net"
-	"time"
+	"errors"
 
 	"github.com/teimurjan/go-p2p/imstorage"
 	"github.com/teimurjan/go-p2p/protocol"
@@ -16,7 +14,7 @@ import (
 // Client is a P2P client interface
 type Client interface {
 	Start()
-	DownloadFile(path string)
+	DownloadFile(path string) error
 }
 
 type client struct {
@@ -45,35 +43,39 @@ func (c *client) handleNotifications() {
 	for {
 		notification := <-c.storage.GetNotificationsToHandle()
 		if notification.Req.Code == protocol.NewPeerCode {
-			c.logger.Println("A new client is connected " + notification.FromAddr.IP.String())
+			c.logger.Printf("A new client is connected(IP=%s)", notification.FromAddr.IP.String())
 			c.peers.Add(notification.FromAddr)
 		} else if notification.Req.Code == protocol.ExitPeerCode {
-			c.logger.Println("The client is disconnected " + notification.FromAddr.IP.String())
+			c.logger.Printf("The client is disconnected(IP=%s)", notification.FromAddr.IP.String())
 			c.peers.Remove(notification.FromAddr)
 		}
 	}
 }
 
-func (c *client) DownloadFile(path string) {
-	for _, peer := range c.peers {
-		tcpAddr := peer.String() + ":" + string(peer.Port)
-		conn, err := net.DialTimeout("tcp", tcpAddr, time.Second*2)
-		if err != nil {
-			c.logger.Printf("Connection with %s cannot be established. Removing from the peers list.", tcpAddr)
-			c.peers.Remove(peer)
-			return
-		}
-		c.logger.Printf("Connection with %s established.", tcpAddr)
+func (c *client) DownloadFile(path string) error {
+	peersWithFile := utilTypes.NewUDPAddrsArray()
 
+	for _, peer := range c.peers {
 		request := &protocol.Request{Code: protocol.CheckFileCode}
-		json, err := json.Marshal(request)
+
+		response, err := process(peer, request)
+
 		if err != nil {
 			c.logger.Error(err)
-			conn.Close()
-			return
+		} else {
+			c.logger.Printf("Connection with %s established", peer.IP.String())
+			if response.Status == protocol.FileExistStatus {
+				peersWithFile.Add(peer)
+			}
 		}
-		conn.Write(json)
 
-		conn.Close()
 	}
+
+	activePeersCount := int64(len(peersWithFile))
+
+	if activePeersCount < 1 {
+		return errors.New("No peers with file available")
+	}
+
+	return nil
 }
