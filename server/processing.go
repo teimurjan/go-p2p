@@ -13,8 +13,8 @@ func getFilePath(filename string) string {
 }
 
 // checkFile checking if file exists
-func checkFile(requestInfo *protocol.RequestInfo) protocol.Response {
-	filePath := getFilePath(requestInfo.FileName)
+func checkFile(request *protocol.Request) protocol.Response {
+	filePath := getFilePath(request.Info.FileName)
 	response := protocol.Response{}
 	responseInfo := protocol.ResponseInfo{}
 
@@ -27,7 +27,7 @@ func checkFile(requestInfo *protocol.RequestInfo) protocol.Response {
 			log.Printf("Error was occurred while evaluating hash %v", error)
 		} else {
 			response.Status = protocol.FileExistStatus
-			responseInfo.FileName = requestInfo.FileName
+			responseInfo.FileName = request.Info.FileName
 			responseInfo.FileHash = foundFileHash
 			responseInfo.FileSize = fileutils.GetFileSize(filePath)
 			response.Info = responseInfo
@@ -38,7 +38,7 @@ func checkFile(requestInfo *protocol.RequestInfo) protocol.Response {
 
 // retrieveChunk tries to retrieve file chunk
 func retrieveChunk(request *protocol.Request) protocol.Response {
-	response := checkFile(&request.Info)
+	response := checkFile(request)
 	if response.Status == protocol.FileExistStatus {
 		filePath := path.Join(configuration.FileSourceDir, request.Info.FileName)
 		bytes, error := fileutils.GetFileChunk(filePath, request.Info.ChunkIndex, request.Info.ChunkSize)
@@ -64,7 +64,7 @@ func process(request *protocol.Request) protocol.Response {
 
 	switch request.Code {
 	case protocol.CheckFileCode:
-		response = checkFile(&request.Info)
+		response = checkFile(request)
 	case protocol.GetChunkCode:
 		response = retrieveChunk(request)
 	}
