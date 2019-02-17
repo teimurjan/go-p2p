@@ -19,6 +19,7 @@ func NewLogger(c *config.Config) *logrus.Logger {
 	} else {
 		logger.SetOutput(file)
 	}
+
 	return logger
 }
 
@@ -27,6 +28,8 @@ func getLoggerFile(fileName string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	filePath := rootDir + "/" + fileName
-	return os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0755)
+
+	return os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0755)
 }

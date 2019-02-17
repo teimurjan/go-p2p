@@ -10,6 +10,7 @@ import (
 	"github.com/teimurjan/go-p2p/imstorage"
 	"github.com/teimurjan/go-p2p/models"
 	"github.com/teimurjan/go-p2p/protocol"
+	"github.com/teimurjan/go-p2p/utils"
 )
 
 // Notifier is base notifier interface
@@ -80,7 +81,15 @@ func (n *notifier) startNotificationListener() {
 	var request protocol.Request
 	for {
 		inputBytes := make([]byte, 4096)
-		length, addr, _ := connection.ReadFromUDP(inputBytes)
+		length, addr, err := connection.ReadFromUDP(inputBytes)
+		if err != nil {
+			n.logger.Error(err)
+			continue
+		}
+
+		if addr.IP.Equal(utils.GetLocalIP()) {
+			continue
+		}
 
 		err = json.Unmarshal(inputBytes[:length], &request)
 		if err != nil {

@@ -45,10 +45,10 @@ func (c *client) handleNotifications() {
 	for {
 		notification := <-c.storage.GetNotificationsToHandle()
 		if notification.Req.Code == protocol.NewPeerCode {
-			c.logger.Println("A new client is connected " + string(notification.FromAddr.IP))
+			c.logger.Println("A new client is connected " + notification.FromAddr.IP.String())
 			c.peers.Add(notification.FromAddr)
 		} else if notification.Req.Code == protocol.ExitPeerCode {
-			c.logger.Println("The client is disconnected " + string(notification.FromAddr.IP))
+			c.logger.Println("The client is disconnected " + notification.FromAddr.IP.String())
 			c.peers.Remove(notification.FromAddr)
 		}
 	}
