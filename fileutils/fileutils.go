@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
+	"io/ioutil"
 	"os"
 )
 
@@ -61,4 +62,9 @@ func GetFileChunk(path string, chunkIndex int64, chunkSize int64) ([]byte, error
 	}
 
 	return chunkBuffer, nil
+}
+
+// SaveFile saves bytes to path
+func SaveFile(path string, data []byte) error {
+	return ioutil.WriteFile(path, data, 0644)
 }

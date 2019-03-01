@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 
+	"github.com/teimurjan/go-p2p/fileutils"
 	"github.com/teimurjan/go-p2p/imstorage"
 	"github.com/teimurjan/go-p2p/protocol"
 
@@ -53,29 +54,51 @@ func (c *client) handleNotifications() {
 }
 
 func (c *client) DownloadFile(path string) error {
-	peersWithFile := utilTypes.NewUDPAddrsArray()
-
-	for _, peer := range c.peers {
-		request := &protocol.Request{Code: protocol.CheckFileCode}
-
-		response, err := process(peer, request)
-
-		if err != nil {
-			c.logger.Error(err)
-		} else {
-			c.logger.Printf("Connection with %s established", peer.IP.String())
-			if response.Status == protocol.FileExistStatus {
-				peersWithFile.Add(peer)
-			}
-		}
-
+	peersWithFile, err := getActivePeers(c.peers)
+	if err != nil {
+		c.logger.Error(err)
+		return err
 	}
 
 	activePeersCount := int64(len(peersWithFile))
-
 	if activePeersCount < 1 {
 		return errors.New("No peers with file available")
 	}
+
+	fileInfo := getFileInfo(peersWithFile[0])
+
+	chunksCount := fileInfo.FileSize / ChunkSize
+	chunks := make([][]byte, 0, chunksCount)
+
+	for i, peer := range peersWithFile {
+		request := &protocol.Request{
+			Code: protocol.GetChunkCode,
+			Info: protocol.RequestInfo{
+				FileName:   fileInfo.FileName,
+				ChunkIndex: int64(i),
+				ChunkSize:  ChunkSize,
+			},
+		}
+
+		response, err := process(peer, request)
+		if err != nil {
+			c.logger.Error(err)
+			return err
+		}
+
+		if response.Status == protocol.ChunkSentStatus {
+			chunks[i] = response.Data
+		}
+	}
+
+	fileData := make([]byte, fileInfo.FileSize)
+	for chunkIndex, chunk := range chunks {
+		for chunkPieceIndex, chunkPiece := range chunk {
+			fileData[chunkIndex*chunkPieceIndex] = chunkPiece
+		}
+	}
+
+	fileutils.SaveFile(path, fileData)
 
 	return nil
 }
