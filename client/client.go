@@ -1,7 +1,9 @@
 package client
 
 import (
+	"encoding/json"
 	"errors"
+	"net/http"
 
 	"github.com/teimurjan/go-p2p/fileutils"
 	"github.com/teimurjan/go-p2p/imstorage"
@@ -12,6 +14,13 @@ import (
 	"github.com/teimurjan/go-p2p/utilTypes"
 )
 
+type GUIRequestBody struct {
+	path string
+}
+
+// ChunkSize is a default size chunk in bytes
+const ChunkSize = 1024
+
 // Client is a P2P client interface
 type Client interface {
 	Start()
@@ -19,15 +28,17 @@ type Client interface {
 }
 
 type client struct {
+	GUIPort string
 	peers   utilTypes.UDPAddrsArray
 	storage imstorage.Storage
 	logger  *logrus.Logger
 }
 
 // NewClient creates new client instance
-func NewClient(storage imstorage.Storage, logger *logrus.Logger) Client {
+func NewClient(GUIPort string, storage imstorage.Storage, logger *logrus.Logger) Client {
 	peers := utilTypes.NewUDPAddrsArray()
 	return &client{
+		GUIPort,
 		peers,
 		storage,
 		logger,
@@ -53,8 +64,32 @@ func (c *client) handleNotifications() {
 	}
 }
 
+func (c *client) listenGUI() {
+	s := &http.Server{Addr: ":" + c.GUIPort}
+	http.HandleFunc("/getFile", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			decoder := json.NewDecoder(r.Body)
+			var body GUIRequestBody
+			err := decoder.Decode(&body)
+
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				c.logger.Error(err)
+				return
+			}
+
+			c.DownloadFile(body.path)
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode("{\"msg\":\"Successfully downloaded\"}")
+		}
+	})
+
+	s.ListenAndServe()
+}
+
 func (c *client) DownloadFile(path string) error {
-	peersWithFile, err := getActivePeers(c.peers)
+	peersWithFile, err := c.getActivePeers()
 	if err != nil {
 		c.logger.Error(err)
 		return err
@@ -65,7 +100,16 @@ func (c *client) DownloadFile(path string) error {
 		return errors.New("No peers with file available")
 	}
 
-	fileInfo := getFileInfo(peersWithFile[0])
+	var fileInfo *protocol.ResponseInfo
+	response, err := process(
+		peersWithFile[0],
+		&protocol.Request{Code: protocol.CheckFileCode},
+	)
+	if err != nil {
+		c.logger.Error(err)
+		return err
+	}
+	fileInfo = &response.Info
 
 	chunksCount := fileInfo.FileSize / ChunkSize
 	chunks := make([][]byte, 0, chunksCount)
@@ -101,4 +145,23 @@ func (c *client) DownloadFile(path string) error {
 	fileutils.SaveFile(path, fileData)
 
 	return nil
+}
+
+func (c *client) getActivePeers() (utilTypes.UDPAddrsArray, error) {
+	peersWithFile := utilTypes.NewUDPAddrsArray()
+
+	for _, peer := range c.peers {
+		request := &protocol.Request{Code: protocol.CheckFileCode}
+
+		response, err := process(peer, request)
+
+		if err != nil {
+			return nil, err
+		} else if response.Status == protocol.FileExistStatus {
+			peersWithFile.Add(peer)
+		}
+
+	}
+
+	return peersWithFile, nil
 }

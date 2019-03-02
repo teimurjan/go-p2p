@@ -32,9 +32,9 @@ type application struct {
 func NewApp(config *config.Config) App {
 	logger := logging.NewLogger(config)
 	storage := imstorage.NewRedisStorage(config.RedisUrl)
-	notifier := notify.NewNotifier(config.Port, storage, logger)
-	client := clientt.NewClient(storage, logger)
-	server := serverr.NewServer(config.Port, logger)
+	notifier := notify.NewNotifier(config.UDPPort, storage, logger)
+	client := clientt.NewClient(config.HTTPPort, config.storage, logger)
+	server := serverr.NewServer(config.TCPPort, logger)
 	return &application{
 		config,
 		logger,

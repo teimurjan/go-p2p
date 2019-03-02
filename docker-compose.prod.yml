@@ -17,7 +17,7 @@ services:
     environment:    
       - REDIS_URL=redis:6379
     ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}/udp"
+      - "${BACKEND_TCP_PORT}:${BACKEND_UDP_PORT}/udp"
   gui:
     restart: always
     build:
