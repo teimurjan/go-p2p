@@ -3,23 +3,27 @@ package client
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"math"
+	"net"
 	"net/http"
+	"path"
+	"strconv"
+	"time"
 
 	"github.com/teimurjan/go-p2p/fileutils"
 	"github.com/teimurjan/go-p2p/imstorage"
 	"github.com/teimurjan/go-p2p/protocol"
+	"github.com/teimurjan/go-p2p/utils"
 
+	"github.com/rs/cors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/teimurjan/go-p2p/utilTypes"
 )
 
-type GUIRequestBody struct {
-	path string
-}
-
 // ChunkSize is a default size chunk in bytes
-const ChunkSize = 1024
+const ChunkSize int64 = 1024
 
 // Client is a P2P client interface
 type Client interface {
@@ -28,17 +32,19 @@ type Client interface {
 }
 
 type client struct {
-	GUIPort string
-	peers   utilTypes.UDPAddrsArray
-	storage imstorage.Storage
-	logger  *logrus.Logger
+	GUIPort       string
+	fileSourceDir string
+	peers         utilTypes.UDPAddrsArray
+	storage       imstorage.Storage
+	logger        *logrus.Logger
 }
 
 // NewClient creates new client instance
-func NewClient(GUIPort string, storage imstorage.Storage, logger *logrus.Logger) Client {
+func NewClient(GUIPort string, fileSourceDir string, storage imstorage.Storage, logger *logrus.Logger) Client {
 	peers := utilTypes.NewUDPAddrsArray()
 	return &client{
 		GUIPort,
+		fileSourceDir,
 		peers,
 		storage,
 		logger,
@@ -49,6 +55,7 @@ func (c *client) Start() {
 	c.logger.Println("Client has started.")
 
 	go c.handleNotifications()
+	go c.listenGUI()
 }
 
 func (c *client) handleNotifications() {
@@ -56,36 +63,58 @@ func (c *client) handleNotifications() {
 		notification := <-c.storage.GetNotificationsToHandle()
 		if notification.Req.Code == protocol.NewPeerCode {
 			c.logger.Printf("A new client is connected(IP=%s)", notification.FromAddr.IP.String())
-			c.peers.Add(notification.FromAddr)
+			c.peers = c.peers.Add(notification.FromAddr)
 		} else if notification.Req.Code == protocol.ExitPeerCode {
 			c.logger.Printf("The client is disconnected(IP=%s)", notification.FromAddr.IP.String())
-			c.peers.Remove(notification.FromAddr)
+			c.peers = c.peers.Remove(notification.FromAddr)
 		}
 	}
 }
 
+type requestBody struct {
+	Path string `json:"path"`
+}
+
 func (c *client) listenGUI() {
-	s := &http.Server{Addr: ":" + c.GUIPort}
-	http.HandleFunc("/getFile", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/getFile", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			decoder := json.NewDecoder(r.Body)
-			var body GUIRequestBody
-			err := decoder.Decode(&body)
+
+			b, err := ioutil.ReadAll(r.Body)
+
+			defer r.Body.Close()
 
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
-				c.logger.Error(err)
+				c.logger.Errorf("Cannot read request body. %e", err)
 				return
 			}
 
-			c.DownloadFile(body.path)
+			var parsedBody requestBody
+			err = json.Unmarshal(b, &parsedBody)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+				c.logger.Errorf("Cannot marshal request body. %e", err)
+				return
+			}
+
+			filePath := path.Join(c.fileSourceDir, parsedBody.Path)
+
+			err = c.DownloadFile(filePath)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 			w.Header().Set("Content-Type", "application/json")
+
 			json.NewEncoder(w).Encode("{\"msg\":\"Successfully downloaded\"}")
 		}
 	})
 
-	s.ListenAndServe()
+	handler := cors.Default().Handler(mux)
+
+	http.ListenAndServe(":"+c.GUIPort, handler)
 }
 
 func (c *client) DownloadFile(path string) error {
@@ -101,9 +130,12 @@ func (c *client) DownloadFile(path string) error {
 	}
 
 	var fileInfo *protocol.ResponseInfo
-	response, err := process(
+	response, err := c.doRequest(
 		peersWithFile[0],
-		&protocol.Request{Code: protocol.CheckFileCode},
+		&protocol.Request{
+			Code: protocol.CheckFileCode,
+			Info: protocol.RequestInfo{FileName: path},
+		},
 	)
 	if err != nil {
 		c.logger.Error(err)
@@ -111,8 +143,9 @@ func (c *client) DownloadFile(path string) error {
 	}
 	fileInfo = &response.Info
 
-	chunksCount := fileInfo.FileSize / ChunkSize
-	chunks := make([][]byte, 0, chunksCount)
+	chunksCount := math.Ceil(float64(fileInfo.FileSize) / float64(ChunkSize))
+
+	chunks := make([][]byte, int(chunksCount))
 
 	for i, peer := range peersWithFile {
 		request := &protocol.Request{
@@ -124,7 +157,7 @@ func (c *client) DownloadFile(path string) error {
 			},
 		}
 
-		response, err := process(peer, request)
+		response, err := c.doRequest(peer, request)
 		if err != nil {
 			c.logger.Error(err)
 			return err
@@ -138,7 +171,7 @@ func (c *client) DownloadFile(path string) error {
 	fileData := make([]byte, fileInfo.FileSize)
 	for chunkIndex, chunk := range chunks {
 		for chunkPieceIndex, chunkPiece := range chunk {
-			fileData[chunkIndex*chunkPieceIndex] = chunkPiece
+			fileData[(chunkIndex+1)*chunkPieceIndex] = chunkPiece
 		}
 	}
 
@@ -153,7 +186,7 @@ func (c *client) getActivePeers() (utilTypes.UDPAddrsArray, error) {
 	for _, peer := range c.peers {
 		request := &protocol.Request{Code: protocol.CheckFileCode}
 
-		response, err := process(peer, request)
+		response, err := c.doRequest(peer, request)
 
 		if err != nil {
 			return nil, err
@@ -164,4 +197,28 @@ func (c *client) getActivePeers() (utilTypes.UDPAddrsArray, error) {
 	}
 
 	return peersWithFile, nil
+}
+
+func (c *client) doRequest(peer *net.UDPAddr, request *protocol.Request) (*protocol.Response, error) {
+	tcpAddr := string(peer.IP) + ":" + strconv.Itoa(peer.Port)
+	conn, err := net.DialTimeout("tcp", tcpAddr, time.Second*2)
+	if err != nil {
+		return nil, err
+	}
+
+	defer conn.Close()
+
+	json, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+
+	conn.Write(json)
+
+	response, err := utils.ReadResponseFromTCP(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
 }

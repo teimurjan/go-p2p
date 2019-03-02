@@ -31,10 +31,10 @@ type application struct {
 // NewApp creates new application instance
 func NewApp(config *config.Config) App {
 	logger := logging.NewLogger(config)
-	storage := imstorage.NewRedisStorage(config.RedisUrl)
+	storage := imstorage.NewRedisStorage(config.RedisURL)
 	notifier := notify.NewNotifier(config.UDPPort, storage, logger)
-	client := clientt.NewClient(config.HTTPPort, config.storage, logger)
-	server := serverr.NewServer(config.TCPPort, logger)
+	client := clientt.NewClient(config.HTTPPort, config.FileSourceDir, storage, logger)
+	server := serverr.NewServer(config.TCPPort, config.FileSourceDir, logger)
 	return &application{
 		config,
 		logger,

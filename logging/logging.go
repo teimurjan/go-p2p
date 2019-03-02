@@ -2,6 +2,7 @@ package logging
 
 import (
 	"os"
+	"path"
 
 	"github.com/sirupsen/logrus"
 	"github.com/teimurjan/go-p2p/config"
@@ -29,7 +30,7 @@ func getLoggerFile(fileName string) (*os.File, error) {
 		return nil, err
 	}
 
-	filePath := rootDir + "/" + fileName
+	filePath := path.Join(rootDir, fileName)
 
 	return os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0755)
 }

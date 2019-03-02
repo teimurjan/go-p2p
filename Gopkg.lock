@@ -40,6 +40,14 @@
   version = "v1.0.1"
 
 [[projects]]
+  digest = "1:b0c25f00bad20d783d259af2af8666969e2fc343fa0dc9efe52936bbd67fb758"
+  name = "github.com/rs/cors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9a47f48565a795472d43519dd49aac781f3034fb"
+  version = "v1.6.0"
+
+[[projects]]
   digest = "1:87c2e02fb01c27060ccc5ba7c5a407cc91147726f8f40b70cceeedbc52b1f3a8"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -73,6 +81,7 @@
     "github.com/gomodule/redigo/redis",
     "github.com/joho/godotenv/autoload",
     "github.com/kelseyhightower/envconfig",
+    "github.com/rs/cors",
     "github.com/sirupsen/logrus",
   ]
   solver-name = "gps-cdcl"
