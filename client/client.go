@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"path"
-	"strconv"
 	"time"
 
 	"github.com/teimurjan/go-p2p/fileutils"
@@ -33,6 +32,7 @@ type Client interface {
 
 type client struct {
 	GUIPort       string
+	TCPPort       string
 	fileSourceDir string
 	peers         utilTypes.UDPAddrsArray
 	storage       imstorage.Storage
@@ -40,10 +40,11 @@ type client struct {
 }
 
 // NewClient creates new client instance
-func NewClient(GUIPort string, fileSourceDir string, storage imstorage.Storage, logger *logrus.Logger) Client {
+func NewClient(GUIPort string, TCPPort string, fileSourceDir string, storage imstorage.Storage, logger *logrus.Logger) Client {
 	peers := utilTypes.NewUDPAddrsArray()
 	return &client{
 		GUIPort,
+		TCPPort,
 		fileSourceDir,
 		peers,
 		storage,
@@ -118,7 +119,7 @@ func (c *client) listenGUI() {
 }
 
 func (c *client) DownloadFile(path string) error {
-	peersWithFile, err := c.getActivePeers()
+	peersWithFile, err := c.getPeersWithFile(path)
 	if err != nil {
 		c.logger.Error(err)
 		return err
@@ -180,11 +181,14 @@ func (c *client) DownloadFile(path string) error {
 	return nil
 }
 
-func (c *client) getActivePeers() (utilTypes.UDPAddrsArray, error) {
+func (c *client) getPeersWithFile(path string) (utilTypes.UDPAddrsArray, error) {
 	peersWithFile := utilTypes.NewUDPAddrsArray()
 
 	for _, peer := range c.peers {
-		request := &protocol.Request{Code: protocol.CheckFileCode}
+		request := &protocol.Request{
+			Code: protocol.CheckFileCode,
+			Info: protocol.RequestInfo{FileName: path},
+		}
 
 		response, err := c.doRequest(peer, request)
 
@@ -200,7 +204,7 @@ func (c *client) getActivePeers() (utilTypes.UDPAddrsArray, error) {
 }
 
 func (c *client) doRequest(peer *net.UDPAddr, request *protocol.Request) (*protocol.Response, error) {
-	tcpAddr := string(peer.IP) + ":" + strconv.Itoa(peer.Port)
+	tcpAddr := peer.IP.String() + ":" + c.TCPPort
 	conn, err := net.DialTimeout("tcp", tcpAddr, time.Second*2)
 	if err != nil {
 		return nil, err

@@ -33,7 +33,7 @@ func NewApp(config *config.Config) App {
 	logger := logging.NewLogger(config)
 	storage := imstorage.NewRedisStorage(config.RedisURL)
 	notifier := notify.NewNotifier(config.UDPPort, storage, logger)
-	client := clientt.NewClient(config.HTTPPort, config.FileSourceDir, storage, logger)
+	client := clientt.NewClient(config.HTTPPort, config.TCPPort, config.FileSourceDir, storage, logger)
 	server := serverr.NewServer(config.TCPPort, config.FileSourceDir, logger)
 	return &application{
 		config,
