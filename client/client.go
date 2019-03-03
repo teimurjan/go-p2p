@@ -27,7 +27,7 @@ const ChunkSize int64 = 1024
 // Client is a P2P client interface
 type Client interface {
 	Start()
-	DownloadFile(path string) error
+	DownloadFile(pathToFile string) error
 }
 
 type client struct {
@@ -99,9 +99,7 @@ func (c *client) listenGUI() {
 				return
 			}
 
-			filePath := path.Join(c.fileSourceDir, parsedBody.Path)
-
-			err = c.DownloadFile(filePath)
+			err = c.DownloadFile(parsedBody.Path)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -118,8 +116,8 @@ func (c *client) listenGUI() {
 	http.ListenAndServe(":"+c.GUIPort, handler)
 }
 
-func (c *client) DownloadFile(path string) error {
-	peersWithFile, err := c.getPeersWithFile(path)
+func (c *client) DownloadFile(pathToFile string) error {
+	peersWithFile, err := c.getPeersWithFile(pathToFile)
 	if err != nil {
 		c.logger.Error(err)
 		return err
@@ -135,7 +133,7 @@ func (c *client) DownloadFile(path string) error {
 		peersWithFile[0],
 		&protocol.Request{
 			Code: protocol.CheckFileCode,
-			Info: protocol.RequestInfo{FileName: path},
+			Info: protocol.RequestInfo{FileName: pathToFile},
 		},
 	)
 	if err != nil {
@@ -176,18 +174,20 @@ func (c *client) DownloadFile(path string) error {
 		}
 	}
 
-	fileutils.SaveFile(path, fileData)
+	fullPathToFile := path.Join(c.fileSourceDir, pathToFile)
+
+	fileutils.SaveFile(fullPathToFile, fileData)
 
 	return nil
 }
 
-func (c *client) getPeersWithFile(path string) (utilTypes.UDPAddrsArray, error) {
+func (c *client) getPeersWithFile(pathToFile string) (utilTypes.UDPAddrsArray, error) {
 	peersWithFile := utilTypes.NewUDPAddrsArray()
 
 	for _, peer := range c.peers {
 		request := &protocol.Request{
 			Code: protocol.CheckFileCode,
-			Info: protocol.RequestInfo{FileName: path},
+			Info: protocol.RequestInfo{FileName: pathToFile},
 		}
 
 		response, err := c.doRequest(peer, request)
@@ -195,7 +195,7 @@ func (c *client) getPeersWithFile(path string) (utilTypes.UDPAddrsArray, error) 
 		if err != nil {
 			return nil, err
 		} else if response.Status == protocol.FileExistStatus {
-			peersWithFile.Add(peer)
+			peersWithFile = peersWithFile.Add(peer)
 		}
 
 	}
