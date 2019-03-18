@@ -8,6 +8,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/teimurjan/go-p2p/fileutils"
+	"github.com/teimurjan/go-p2p/imstorage"
+	"github.com/teimurjan/go-p2p/models"
 	"github.com/teimurjan/go-p2p/protocol"
 	"github.com/teimurjan/go-p2p/utils"
 )
@@ -15,19 +17,17 @@ import (
 // Server is a P2P server interface
 type Server interface {
 	Start()
-	listenTCP()
-	acceptConnections(l net.Listener)
-	handleRequest(request *protocol.Request) *protocol.Response
 }
 
 type server struct {
 	port          string
 	fileSourceDir string
+	storage       imstorage.Storage
 	logger        *logrus.Logger
 }
 
 // NewServer creates new server instance
-func NewServer(port string, fileSourceDir string, logger *logrus.Logger) Server {
+func NewServer(port string, fileSourceDir string, storage imstorage.Storage, logger *logrus.Logger) Server {
 	if !fileutils.IsFileExists(fileSourceDir) {
 		err := os.Mkdir(fileSourceDir, os.ModePerm)
 		if err != nil {
@@ -36,10 +36,11 @@ func NewServer(port string, fileSourceDir string, logger *logrus.Logger) Server 
 		}
 	}
 
-	return &server{port, fileSourceDir, logger}
+	return &server{port, fileSourceDir, storage, logger}
 }
 
 func (s *server) Start() {
+	s.greetPeers()
 	s.listenTCP()
 }
 
@@ -133,4 +134,12 @@ func (s *server) retrieveChunk(request *protocol.Request) protocol.Response {
 		}
 	}
 	return response
+}
+
+func (s *server) greetPeers() {
+	s.storage.AddNotificationToSend(
+		&models.Notification{
+			Req: &protocol.Request{Code: protocol.NewPeerCode},
+		},
+	)
 }

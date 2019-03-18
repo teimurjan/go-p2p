@@ -8,9 +8,7 @@ import (
 	"github.com/teimurjan/go-p2p/config"
 	"github.com/teimurjan/go-p2p/imstorage"
 	"github.com/teimurjan/go-p2p/logging"
-	"github.com/teimurjan/go-p2p/models"
 	"github.com/teimurjan/go-p2p/notify"
-	"github.com/teimurjan/go-p2p/protocol"
 	serverr "github.com/teimurjan/go-p2p/server"
 )
 
@@ -34,7 +32,8 @@ func NewApp(config *config.Config) App {
 	storage := imstorage.NewRedisStorage(config.RedisURL)
 	notifier := notify.NewNotifier(config.UDPPort, storage, logger)
 	client := clientt.NewClient(config.HTTPPort, config.TCPPort, config.FileSourceDir, storage, logger)
-	server := serverr.NewServer(config.TCPPort, config.FileSourceDir, logger)
+	server := serverr.NewServer(config.TCPPort, config.FileSourceDir, storage, logger)
+
 	return &application{
 		config,
 		logger,
@@ -52,8 +51,6 @@ func (app *application) Start() {
 
 	app.client.Start()
 
-	app.greetPeers()
-
 	app.server.Start()
 }
 
@@ -65,12 +62,4 @@ func (app *application) startImstorage() {
 	go app.storage.SubscribeToNotificationsToHandle(func() { wg.Done() })
 
 	wg.Wait()
-}
-
-func (app *application) greetPeers() {
-	app.storage.AddNotificationToSend(
-		&models.Notification{
-			Req: &protocol.Request{Code: protocol.NewPeerCode},
-		},
-	)
 }
